@@ -27,25 +27,30 @@ pip install -e ".[dev]"
 prek install
 ```
 
-For the reactive sampling experiments, you need to apply for model access to the [UMA model repository](https://huggingface.co/facebook/UMA), and log in to the Hugging Face CLI using an access token.
+For metadynamics simulations, [PLUMED](https://www.plumed.org) and [OpenMM-PLUMED](https://github.com/openmm/openmm-plumed) have to be additionally installed.
+Please refer to their documentation for installation instructions.
+
+### huggingface
+
+For the reactive sampling experiments, you need to apply for model access to the [UMA model repository](https://huggingface.co/facebook/UMA), and log in to the Hugging Face CLI using an access token. This requires installing the [huggingface cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
 
 ```bash
-huggingface-cli login
+hf login
 ```
 
-## Data
+#### Pretrain data
 
 MD and well-tempered metadynamics simulation scripts and pretraining data are hosted on [Hugging Face](https://huggingface.co/facebook/wt-asbs).
 We provide a script to download the files to local directory `md_data/`.
 Downloading data requires you to have a [token](https://huggingface.co/settings/tokens).
-You must first [apply for access to the repo](https://huggingface.co/facebook/wt-asbs) before downloading.
+You must first [apply for access to the repo](https://huggingface.co/facebook/wt-asbs) before downloading and logged into the huggingface-cli.
 
 ```bash
 python scripts/download_pretraining_data.py
 ```
 
-For metadynamics simulations, [PLUMED](https://www.plumed.org) and [OpenMM-PLUMED](https://github.com/openmm/openmm-plumed) have to be additionally installed.
-Please refer to their documentation for installation instructions.
+#### Reference data and models
+We've also provided reference metadynamics and long-timescale md data for all simulations and pretrained models on [Hugging Face](https://huggingface.co/facebook/wt-asbs). 
 
 ## Training
 
