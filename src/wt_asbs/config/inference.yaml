@@ -1,0 +1,11 @@
+checkpoint_directory: null
+seed: 42
+batch_size: 256
+num_samples: 100000
+progress_bar: true
+fabric:
+  _target_: lightning.fabric.Fabric
+  accelerator: gpu
+  strategy: ddp
+  devices: 8
+  num_nodes: 1

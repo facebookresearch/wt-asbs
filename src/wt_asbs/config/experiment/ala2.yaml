@@ -1,0 +1,231 @@
+# @package _global_
+
+name: ala2
+
+################################################################################
+# Material setup
+################################################################################
+
+pbc: [false, false, false]
+cell: null
+temperature: 300.0
+topology_pdb_file: md_data/ala2/ala2_ref.pdb
+composition: HCH2CONHCHCH3CONHCH3
+num_atoms: 22
+mean_free: true
+
+################################################################################
+# Models
+################################################################################
+
+controller:
+  _target_: wt_asbs.model.controller.ClippedModel
+  base_model:
+    _target_: wt_asbs.model.painn_fc.PaiNN
+    num_features: 128
+    num_radial_basis: 64
+    num_layers: 4
+    r_max: 8.0
+    r_offset: 0.0
+    time_init_mode: node
+    conservative: false
+    num_elements: ${num_atoms}
+    unique_atom_indices: true
+  subtract_mean: true
+  clip_value: null
+
+corrector:
+  _target_: wt_asbs.model.controller.ClippedModel
+  base_model:
+    _target_: wt_asbs.model.painn_fc.PaiNN
+    num_features: 128
+    num_radial_basis: 64
+    num_layers: 3
+    r_max: 8.0
+    r_offset: 0.0
+    time_init_mode: none
+    conservative: false
+    num_elements: ${num_atoms}
+    unique_atom_indices: true
+  subtract_mean: true
+  clip_value: null
+
+################################################################################
+# Optimization
+################################################################################
+
+pretrain_optimizer:
+  _target_: torch.optim.AdamW
+  lr: 3e-4
+  weight_decay: 0.001
+
+controller_optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1e-4
+  weight_decay: 0.001
+
+corrector_optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1e-4
+  weight_decay: 0.001
+
+gradient_clip_val: 100.0
+ema_decay: null
+ema_start_step: 0
+
+################################################################################
+# Buffers
+################################################################################
+
+adjoint_buffer:
+  _target_: wt_asbs.data.buffer.ThermoAtomicDataBuffer
+  max_size: 2048
+  filter_nan: true
+
+corrector_buffer:
+  _target_: wt_asbs.data.buffer.ThermoAtomicDataBuffer
+  max_size: 2048
+  filter_nan: true
+
+initial_buffer_samples: 2048
+buffer_samples_per_epoch: 256
+log_buffer_energy: true
+log_buffer_grad_norm: true
+
+################################################################################
+# Process and integration
+################################################################################
+
+source:
+  _target_: wt_asbs.process.source.GaussianSource
+  pbc: ${pbc}
+  cell: ${cell}
+  composition: ${composition}
+  temperature: ${temperature}
+  center: ${mean_free}
+
+pretrain_target:
+  _target_: wt_asbs.process.source.PreGeneratedAtomsSource
+  atoms_file: md_data/ala2/ala2_0.1ns.pdb
+
+bridge_matching_max_time: 0.99  # time cutoff for numerically stable score computation
+
+base_sde:
+  _target_: wt_asbs.process.sde.EDMSDE
+  sigma_min: 0.001
+  sigma_max: 6.0
+  rho: 3.0
+
+integrator:
+  _target_: wt_asbs.process.integrator.EulerMaruyamaIntegrator
+  timesteps:
+    _target_: wt_asbs.process.integrator.get_timesteps
+    t0: 0.0
+    t1: 1.0
+    steps: 250
+    rescale_t: null
+
+################################################################################
+# Potential and terminal cost
+################################################################################
+
+potential:
+  _target_: wt_asbs.potential.base.SumPotential
+  potentials:
+    - _target_: wt_asbs.potential.openmm.OpenMMPotential
+      system:
+        _target_: openmmtools.testsystems.AlanineDipeptideImplicit
+        constraints: null  # should not use hbonds constraint
+      device: cuda
+    - ${metadynamics}
+    - ${chirality_restraint_1}
+    - ${chirality_restraint_2}
+
+metadynamics:
+  _target_: wt_asbs.potential.metadynamics.WellTemperedMetadynamicsBias
+  cv: ${cv}
+  height: 0.0005
+  sigma: [0.2, 0.2]
+  grid_min: [-3.141592653589793, -3.141592653589793]
+  grid_max: [3.141592653589793, 3.141592653589793]
+  grid_bin: [150, 150]
+  bias_factor: 8.0
+  temperature: ${temperature}
+  add_every_epoch: 1
+  skip_initial_epochs: 50
+
+cv:
+  _target_: wt_asbs.potential.metadynamics.collective_variable.TorsionCV
+  indices: [[4, 6, 8, 14], [6, 8, 14, 16]]
+
+chirality_restraint_1:  # Restraint for L-amino acid (CA, N, C, CB improper torsion)
+  _target_: wt_asbs.potential.metadynamics.restraint.ChiralityRestraint
+  indices: [[8, 6, 14, 10]]
+  location: 0.6154797086703873  # +35 deg
+  force_constant: 25.0  # eV/rad^2
+
+chirality_restraint_2:  # Restraint for L-amino acid (CA, N, C, HA improper torsion)
+  _target_: wt_asbs.potential.metadynamics.restraint.ChiralityRestraint
+  indices: [[8, 6, 14, 9]]
+  location: -0.6154797086703873  # -35 deg
+  force_constant: 25.0  # eV/rad^2
+
+terminal_cost:
+  _target_: wt_asbs.process.terminal_cost.ASBSTerminalCost
+  grad_clip_val: 100.0
+
+annealer:
+  _target_: wt_asbs.process.annealer.TemperatureAnnealer
+  epochs: [0, 500]
+  temperatures: [300.0, 300.0]  # no annealing
+
+################################################################################
+# Training settings
+################################################################################
+
+train_batch_size: 64
+inference_batch_size: 64
+steps_per_epoch: 100
+log_step_loss: true
+
+pretrain_curriculum:
+  - bridge_matching: 1000
+curriculum:
+  - adjoint_matching: 1000
+  - corrector_matching: 500
+  - adjoint_matching: 1000
+  - corrector_matching: 500
+  - adjoint_matching: 1000
+  - corrector_matching: 500
+  - adjoint_matching: 1000
+  - corrector_matching: 500
+  - adjoint_matching: 1000
+
+skip_scheduler_steps: 0
+pretrain_scheduler:
+  _target_: wt_asbs.utils.training.CosineAnnealingWithWarmupScheduler
+  curriculum:
+    _target_: wt_asbs.utils.training.TrainingCurriculum
+    curriculum: ${pretrain_curriculum}
+  task_name: bridge_matching
+  steps_per_epoch: ${steps_per_epoch}
+  warmup_epochs: 50
+  eta_min: 1e-4
+controller_scheduler:
+  _target_: wt_asbs.utils.training.CosineAnnealingWithWarmupScheduler
+  curriculum:
+    _target_: wt_asbs.utils.training.TrainingCurriculum
+    curriculum: ${curriculum}
+  task_name: adjoint_matching
+  steps_per_epoch: ${steps_per_epoch}
+  warmup_epochs: ${metadynamics.skip_initial_epochs}
+  eta_min: 1e-5
+corrector_scheduler:
+  _target_: wt_asbs.utils.training.CosineAnnealingWithWarmupScheduler
+  curriculum:
+    _target_: wt_asbs.utils.training.TrainingCurriculum
+    curriculum: ${curriculum}
+  task_name: corrector_matching
+  steps_per_epoch: ${steps_per_epoch}
+  warmup_epochs: 50
+  eta_min: 1e-5

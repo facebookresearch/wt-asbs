@@ -1,0 +1,32 @@
+defaults:
+  - experiment: ala2
+
+root: null
+seed: 42
+
+hydra:
+  run:
+    dir: ${root}/${name}
+
+log_loss_interval_step: 10
+checkpoint_directory: ${hydra:run.dir}/checkpoints
+save_checkpoint_interval_epoch: 20
+pretrained_controller_checkpoint: null
+sample_directory: ${hydra:run.dir}/samples
+save_sample_interval_epoch: 20
+progress_bar: true
+num_workers: 0
+compile: true  # for direct prediction
+
+fabric:
+  _target_: lightning.fabric.Fabric
+  accelerator: gpu
+  strategy: ddp
+  devices: 8
+  num_nodes: 1
+  loggers:
+    _target_: wandb.integration.lightning.fabric.WandbLogger
+    name: ${name}
+    project: wt_asbs
+    tags: null
+    save_dir: ${hydra:run.dir}

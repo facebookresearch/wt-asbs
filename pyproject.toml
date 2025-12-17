@@ -1,0 +1,48 @@
+[project]
+name = "wt-asbs"
+version = "0.1.0"
+description = "Well-Tempered Adjoint Schrodinger Bridge Sampler"
+readme = "README.md"
+authors = [
+    { name = "Juno Nam", email = "junonam@mit.edu" },
+    { name = "Guan-Horng Liu" },
+    { name = "Benjamin Kurt Miller", email = "bkmi@meta.com" },
+]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "ase>=3.25.0",
+    "fairchem-core>=2.4.0",
+    "hydra-core>=1.3.2",
+    "ipykernel>=7.1.0",
+    "lightning>=2.5.0",
+    "matplotlib>=3.10.7",
+    "mdtraj>=1.11.0",
+    "mpiplus",
+    "netcdf4>=1.7.3",
+    "numpy>=2.2.6",
+    "openmm-cuda-12>=8.4.0",
+    "openmm>=8.4.0",
+    "openmmtools",
+    "pymbar>=4.0.3",
+    "tables>=3.10.2",
+    "tqdm>=4.67.1",
+    "wandb>=0.23.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+mpiplus = { git = "https://github.com/choderalab/mpiplus", tag = "v0.0.2" }
+openmmtools = { git = "https://github.com/choderalab/openmmtools", tag = "0.25.0" }
+
+[dependency-groups]
+dev = [
+    "prek>=0.2.19",
+    "ruff>=0.14.7",
+]
+mlcv = [
+    "deeptime>=0.4.5",
+    "mlcolvar>=1.2.2",
+]

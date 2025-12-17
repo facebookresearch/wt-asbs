@@ -1,0 +1,44 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Slurm outputs
+slurm*.out
+slurm_logs/
+
+# Hydra and lightning
+outputs/
+lightning_logs/
+
+# Trajectories and MD outputs
+*.xyz
+*.traj
+*.npy
+*.pdb
+*.h5
+*.nc
+pt_real_time_analysis.yaml
+COLVAR
+HILLS
+*.txt
+
+# Exclude reference PDBs
+!md_data/ala2/ala2_ref.pdb
+!md_data/ala2/ala2_0.1ns.pdb
+!md_data/ala4/ala4_ref.pdb
+!md_data/ala4/ala4_1ns.pdb
+!src/wt_asbs/potential/testsystem/ala4_ref.pdb
+!md_data/sn2/sn2_opt.xyz
+!md_data/ptsb/opt.xyz
+!md_data/ptsb/equil.xyz
+!md_data/ptsb/md_10ps.xyz
+
+# Checkpoints
+*.pt
